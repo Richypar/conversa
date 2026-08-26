@@ -17,6 +17,7 @@
     --line: #d8dde6;
     --ok: #188a42;
     --danger: #d0342c;
+    --link: #1d6fd8;
   }
   html[data-theme="dark"] {
     --bg: #0f1420;
@@ -46,6 +47,7 @@
     flex: none;
   }
   .brand { font-weight: 700; font-size: 20px; letter-spacing: .3px; }
+  #engTag { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 8px; }
   .tools { display: flex; gap: 8px; }
   .tools button {
     min-width: 52px;
@@ -111,6 +113,21 @@
     padding: 2px 6px;
     max-width: 60%;
   }
+  details.archive {
+    margin-bottom: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+  }
+  details.archive > summary {
+    cursor: pointer;
+    padding: 12px 14px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  details.archive > div { padding: 10px 12px 2px; }
+  span.who { cursor: default !important; }
   #interim {
     font-size: var(--fs);
     line-height: 1.42;
@@ -173,14 +190,16 @@
     border-radius: 18px;
     background: var(--bg);
     color: var(--fg);
-    width: min(560px, 92vw);
+    width: min(580px, 92vw);
+    max-height: 88vh;
+    overflow-y: auto;
     padding: 22px;
     margin: auto;
   }
   dialog::backdrop { background: rgba(0,0,0,.55); }
   dialog h2 { font-size: 24px; margin-bottom: 14px; }
   dialog label { display: block; font-size: 17px; font-weight: 600; margin: 14px 0 6px; }
-  dialog input[type="password"], dialog input[type="text"] {
+  dialog input[type="password"], dialog input[type="text"], dialog textarea, dialog select {
     width: 100%;
     font-size: 18px;
     padding: 12px;
@@ -188,7 +207,34 @@
     border-radius: 10px;
     background: var(--card);
     color: var(--fg);
+    font-family: inherit;
   }
+  .seg { display: flex; gap: 8px; }
+  .seg button {
+    flex: 1;
+    height: 50px;
+    border-radius: 10px;
+    border: 2px solid var(--line);
+    background: var(--card);
+    color: var(--fg);
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .seg button.on {
+    border-color: var(--link);
+    color: var(--link);
+    background: color-mix(in srgb, var(--link) 10%, var(--bg));
+  }
+  .chk {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 17px;
+    cursor: pointer;
+  }
+  .chk input { width: 22px; height: 22px; }
   .dlg-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
   .dlg-row button {
     flex: 1;
@@ -204,7 +250,7 @@
   .btn-sec { background: var(--card); color: var(--fg); border: 1px solid var(--line) !important; }
   .help { font-size: 15px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
   .help ol { margin: 6px 0 0 20px; }
-  .help a { color: #1d6fd8; }
+  .help a { color: var(--link); }
   .privacy {
     margin-top: 16px;
     padding: 10px 12px;
@@ -219,7 +265,7 @@
 <body>
 
 <header>
-  <div class="brand">💬 Conversa</div>
+  <div class="brand">💬 Conversa<span id="engTag"></span></div>
   <div class="tools">
     <button id="btnFontMinus" title="Letra más pequeña">A−</button>
     <button id="btnFontPlus" title="Letra más grande">A+</button>
@@ -244,19 +290,44 @@
 
 <dialog id="dlg">
   <h2>Ajustes</h2>
-  <label for="inpKey">Clave de API de Deepgram</label>
-  <input type="password" id="inpKey" autocomplete="off" placeholder="Pega aquí la clave">
+
+  <label>Motor de transcripción</label>
+  <div class="seg">
+    <button id="segDg" type="button">Deepgram</button>
+    <button id="segSm" type="button">Speechmatics</button>
+  </div>
+
+  <div id="grpDg">
+    <label for="inpKey">Clave de API de Deepgram</label>
+    <input type="password" id="inpKey" autocomplete="off" placeholder="Pega aquí la clave">
+  </div>
+
+  <div id="grpSm">
+    <label for="inpKeySm">Clave de API de Speechmatics</label>
+    <input type="password" id="inpKeySm" autocomplete="off" placeholder="Pega aquí la clave">
+    <label for="inpVocab">Nombres y palabras frecuentes (opcional)</label>
+    <textarea id="inpVocab" rows="2" placeholder="Marta, Villanueva, bizcocho…"></textarea>
+  </div>
+
+  <label for="selMic">Micrófono</label>
+  <select id="selMic"><option value="">Automático</option></select>
+
+  <label class="chk" style="margin-top:16px">
+    <input type="checkbox" id="chkFilters" checked>
+    Filtros de voz de Chrome (ruido y eco)
+  </label>
+
   <div class="help">
-    <b>¿Cómo consigo la clave?</b> (solo hay que hacerlo una vez)
+    <b>¿Cómo consigo las claves?</b> (solo hay que hacerlo una vez por motor)
     <ol>
-      <li>Entra en <a href="https://console.deepgram.com" target="_blank" rel="noopener">console.deepgram.com</a> y crea una cuenta (regalan 200&nbsp;$ de saldo, más de un año de uso).</li>
-      <li>En el menú, abre <b>API Keys</b> y pulsa <b>Create a New API Key</b>.</li>
-      <li>Copia la clave y pégala arriba.</li>
+      <li><b>Deepgram:</b> cuenta en <a href="https://console.deepgram.com" target="_blank" rel="noopener">console.deepgram.com</a> (200&nbsp;$ de regalo) → <i>API Keys</i> → <i>Create a New API Key</i>.</li>
+      <li><b>Speechmatics:</b> cuenta en <a href="https://portal.speechmatics.com" target="_blank" rel="noopener">portal.speechmatics.com</a> (100&nbsp;$ de regalo) → <i>API Keys</i> → crear clave.</li>
     </ol>
+    Si el micrófono capta lejos o con ruido, prueba a desmarcar los filtros de voz.
   </div>
   <div class="privacy">
-    🔒 <b>Privacidad:</b> la conversación no se guarda en ningún sitio. Al cerrar la aplicación se borra todo. Solo la clave y tus preferencias de letra y tema quedan guardadas en esta tablet.
-    <br><span style="opacity:.6">Versión 1.1</span>
+    🔒 <b>Privacidad:</b> la conversación no se guarda en ningún sitio. Al cerrar la aplicación se borra todo. Solo las claves y tus preferencias quedan guardadas en esta tablet.
+    <br><span style="opacity:.6">Versión 1.2</span>
   </div>
   <div class="dlg-row">
     <button class="btn-pri" id="btnSave">Guardar</button>
@@ -269,19 +340,41 @@
 "use strict";
 
 /* ---------- Estado ---------- */
-const LS = { key: "conversa_key", font: "conversa_font", theme: "conversa_theme" };
+const LS = {
+  keyDg: "conversa_key",
+  keySm: "conversa_key_sm",
+  engine: "conversa_engine",
+  vocab: "conversa_vocab",
+  mic: "conversa_mic",
+  filters: "conversa_filters",
+  font: "conversa_font",
+  theme: "conversa_theme"
+};
 const COLORS = ["#1d6fd8", "#188a42", "#d97706", "#9333ea", "#dc2626", "#0d9488", "#b45309", "#4f46e5"];
+const ENGINE_NAMES = { deepgram: "Deepgram", speechmatics: "Speechmatics" };
 
 let state = "idle";          // idle | connecting | listening | reconnecting
 let userStopped = false;
+let fatalError = false;
 let ws = null, rec = null, micStream = null, wakeLock = null;
+let smCtx = null, smSeq = 0;
 let keepAliveTimer = null, clockTimer = null, reconnectTries = 0, sessionStart = 0;
 let demoTimer = null, demoRunning = false;
 const speakerNames = {};     // índice -> nombre (solo en memoria, se borra al cerrar)
+const smSpeakerMap = {};     // etiqueta Speechmatics ("S1") -> índice
+let smLastSpeaker = 0;
 let lastSegment = null;      // { speaker, txtEl }
 
 const $ = id => document.getElementById(id);
 const feed = $("feed"), bubbles = $("bubbles"), interimEl = $("interim");
+
+function currentEngine() {
+  return localStorage.getItem(LS.engine) === "speechmatics" ? "speechmatics" : "deepgram";
+}
+function updateEngTag() {
+  $("engTag").textContent = "· " + ENGINE_NAMES[currentEngine()];
+}
+updateEngTag();
 
 /* ---------- Preferencias ---------- */
 function applyFont(px) {
@@ -449,6 +542,36 @@ function clearTranscript() {
   $("empty").style.display = state === "idle" ? "" : "none";
 }
 
+function archiveConversation() {
+  // Al empezar de nuevo, la conversación anterior se pliega en un acordeón
+  // y la pantalla queda como nueva.
+  if (!bubbles.querySelector(".bubble")) { showInterim(""); return; }
+  const wrap = document.createElement("details");
+  wrap.className = "archive";
+  const sum = document.createElement("summary");
+  const t = new Date();
+  sum.textContent = "Conversación anterior · " +
+    String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0");
+  wrap.appendChild(sum);
+  const inner = document.createElement("div");
+  while (bubbles.firstChild) inner.appendChild(bubbles.firstChild);
+  // Congela las etiquetas de nombre del archivo (ya no se pueden renombrar).
+  inner.querySelectorAll("button.who").forEach(b => {
+    const s = document.createElement("span");
+    s.className = "who";
+    s.textContent = b.textContent;
+    b.replaceWith(s);
+  });
+  wrap.appendChild(inner);
+  bubbles.appendChild(wrap);
+  lastSegment = null;
+  for (const k in speakerNames) delete speakerNames[k];
+  for (const k in smSpeakerMap) delete smSpeakerMap[k];
+  smLastSpeaker = 0;
+  showInterim("");
+  feed.scrollTop = feed.scrollHeight;
+}
+
 let clearArmed = false;
 $("btnClear").onclick = () => {
   if (!clearArmed) {
@@ -470,37 +593,80 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && state === "listening") acquireWakeLock();
 });
 
-/* ---------- Micrófono + Deepgram ---------- */
-function pickMime() {
-  const options = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
-  for (const m of options) {
-    if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+/* ---------- Micrófono ---------- */
+async function openMic() {
+  const filters = localStorage.getItem(LS.filters) !== "0";
+  const micId = localStorage.getItem(LS.mic) || "";
+  const audio = {
+    echoCancellation: filters,
+    noiseSuppression: filters,
+    autoGainControl: filters,
+    channelCount: 1
+  };
+  if (micId) audio.deviceId = { exact: micId };
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio });
+  } catch (e) {
+    if (micId) {
+      // El micrófono elegido ya no está conectado: usar el automático.
+      delete audio.deviceId;
+      return await navigator.mediaDevices.getUserMedia({ audio });
+    }
+    throw e;
   }
-  return null;
+}
+
+/* ---------- Sesión (común a ambos motores) ---------- */
+function beginSession() {
+  state = "listening";
+  reconnectTries = 0;
+  banner("");
+  if (!sessionStart) sessionStart = Date.now();
+  clearInterval(clockTimer);
+  clockTimer = setInterval(tickClock, 1000);
+  tickClock();
+  acquireWakeLock();
+}
+
+function handleWsClose(ev) {
+  if (userStopped || state === "idle") return;
+  stopAudioOnly();
+  if (fatalError) { fullStop(); return; }
+  if (currentEngine() === "deepgram" &&
+      (ev.code === 1008 || ev.code === 4001 || ev.code === 4003)) {
+    fullStop();
+    banner("La clave de Deepgram no es válida o no tiene saldo. Revísala en ⚙️ Ajustes.", "err");
+    return;
+  }
+  if (reconnectTries >= 6) {
+    fullStop();
+    banner("No se pudo recuperar la conexión. Comprueba el wifi y vuelve a pulsar Empezar.", "err");
+    return;
+  }
+  reconnectTries++;
+  state = "reconnecting";
+  setStatus("Reconectando…", false);
+  banner("Se cortó la conexión. Reconectando…", "info");
+  setTimeout(() => { if (!userStopped) startListening(); }, 1200 * reconnectTries);
 }
 
 async function startListening() {
-  const key = localStorage.getItem(LS.key);
+  const engine = currentEngine();
+  const key = localStorage.getItem(engine === "deepgram" ? LS.keyDg : LS.keySm);
   if (!key) {
-    banner("Primero hay que configurar la clave de Deepgram (botón ⚙️).", "info");
+    banner("Falta la clave de " + ENGINE_NAMES[engine] + ". Configúrala en ⚙️ Ajustes.", "info");
     openSettings();
     return;
   }
-  const mime = pickMime();
-  if (!mime) {
-    banner("Este navegador no puede grabar audio. Usa Chrome en la tablet.", "err");
-    return;
-  }
   userStopped = false;
+  fatalError = false;
   banner("");
   state = "connecting";
   setStatus("Conectando…", false);
   setMainButton(true);
 
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
+    micStream = await openMic();
   } catch (e) {
     state = "idle";
     setMainButton(false);
@@ -509,6 +675,26 @@ async function startListening() {
     return;
   }
 
+  if (engine === "deepgram") connectDeepgram(key);
+  else connectSpeechmatics(key);
+}
+
+/* ---------- Motor: Deepgram ---------- */
+function pickMime() {
+  const options = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  for (const m of options) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return null;
+}
+
+function connectDeepgram(key) {
+  const mime = pickMime();
+  if (!mime) {
+    fullStop();
+    banner("Este navegador no puede grabar audio. Usa Chrome en la tablet.", "err");
+    return;
+  }
   const params = new URLSearchParams({
     model: "nova-3",
     language: "es",
@@ -520,20 +706,12 @@ async function startListening() {
   ws = new WebSocket("wss://api.deepgram.com/v1/listen?" + params, ["token", key]);
 
   ws.onopen = () => {
-    state = "listening";
-    reconnectTries = 0;
-    banner("");
-    if (!sessionStart) sessionStart = Date.now();
-    clockTimer = setInterval(tickClock, 1000);
-    tickClock();
-    acquireWakeLock();
-
+    beginSession();
     rec = new MediaRecorder(micStream, { mimeType: mime, audioBitsPerSecond: 128000 });
     rec.ondataavailable = e => {
       if (e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) ws.send(e.data);
     };
     rec.start(250);
-
     keepAliveTimer = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "KeepAlive" }));
     }, 5000);
@@ -553,35 +731,171 @@ async function startListening() {
     }
   };
 
-  ws.onclose = ev => {
-    if (userStopped || state === "idle") return;
-    stopAudioOnly();
-    if (ev.code === 1008 || ev.code === 4001 || ev.code === 4003) {
-      fullStop();
-      banner("La clave de Deepgram no es válida o no tiene saldo. Revísala en ⚙️ Ajustes.", "err");
-      return;
-    }
-    if (reconnectTries >= 6) {
-      fullStop();
-      banner("No se pudo recuperar la conexión. Comprueba el wifi y vuelve a pulsar Empezar.", "err");
-      return;
-    }
-    reconnectTries++;
-    state = "reconnecting";
-    setStatus("Reconectando…", false);
-    banner("Se cortó la conexión. Reconectando…", "info");
-    setTimeout(() => { if (!userStopped) startListening(); }, 1200 * reconnectTries);
-  };
-
+  ws.onclose = handleWsClose;
   ws.onerror = () => { /* onclose se encarga */ };
 }
 
+/* ---------- Motor: Speechmatics ---------- */
+async function smTempToken(apiKey) {
+  const r = await fetch("https://mp.speechmatics.com/v1/api_keys?type=rt", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey
+    },
+    body: JSON.stringify({ ttl: 3600 })
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return (await r.json()).key_value;
+}
+
+function smVocab() {
+  const raw = localStorage.getItem(LS.vocab) || "";
+  return raw.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean).slice(0, 100);
+}
+
+function smSpeakerIndex(label) {
+  if (!label || label === "UU") return smLastSpeaker;
+  if (!(label in smSpeakerMap)) {
+    const m = /^S(\d+)$/.exec(label);
+    smSpeakerMap[label] = m ? parseInt(m[1], 10) - 1 : Object.keys(smSpeakerMap).length;
+  }
+  smLastSpeaker = smSpeakerMap[label];
+  return smLastSpeaker;
+}
+
+function smWords(results) {
+  const out = [];
+  for (const r of results || []) {
+    const alt = r.alternatives && r.alternatives[0];
+    if (!alt || !alt.content) continue;
+    if (r.type === "punctuation") {
+      if (out.length && r.attaches_to !== "next") {
+        out[out.length - 1].punctuated_word += alt.content;
+      } else if (out.length) {
+        out[out.length - 1].punctuated_word += alt.content;
+      }
+      continue;
+    }
+    out.push({ punctuated_word: alt.content, speaker: smSpeakerIndex(alt.speaker) });
+  }
+  return out;
+}
+
+function smText(results) {
+  let s = "";
+  for (const r of results || []) {
+    const c = r.alternatives && r.alternatives[0] && r.alternatives[0].content;
+    if (!c) continue;
+    s += (r.type === "punctuation" || !s) ? c : " " + c;
+  }
+  return s;
+}
+
+const SM_WORKLET =
+  "class PCMTap extends AudioWorkletProcessor {" +
+  " process(inputs) {" +
+  "  const ch = inputs[0] && inputs[0][0];" +
+  "  if (ch) this.port.postMessage(ch.slice(0));" +
+  "  return true; } }" +
+  " registerProcessor('pcm-tap', PCMTap);";
+
+async function smStartAudio() {
+  smSeq = 0;
+  smCtx = new AudioContext({ sampleRate: 16000 });
+  await smCtx.audioWorklet.addModule(
+    URL.createObjectURL(new Blob([SM_WORKLET], { type: "application/javascript" }))
+  );
+  const src = smCtx.createMediaStreamSource(micStream);
+  const node = new AudioWorkletNode(smCtx, "pcm-tap");
+  let acc = [], accLen = 0;
+  node.port.onmessage = e => {
+    acc.push(e.data);
+    accLen += e.data.length;
+    if (accLen < 2048) return;                 // ~128 ms a 16 kHz
+    const f32 = new Float32Array(accLen);
+    let o = 0;
+    for (const a of acc) { f32.set(a, o); o += a.length; }
+    acc = []; accLen = 0;
+    const i16 = new Int16Array(f32.length);
+    for (let i = 0; i < f32.length; i++) {
+      const s = Math.max(-1, Math.min(1, f32[i]));
+      i16[i] = s < 0 ? s * 32768 : s * 32767;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) { ws.send(i16.buffer); smSeq++; }
+  };
+  src.connect(node);
+}
+
+async function connectSpeechmatics(apiKey) {
+  let jwt;
+  try {
+    jwt = await smTempToken(apiKey);
+  } catch (e) {
+    fullStop();
+    banner("No se pudo validar la clave de Speechmatics (" + e.message + "). Revísala en ⚙️ Ajustes.", "err");
+    return;
+  }
+  if (userStopped) return;
+
+  ws = new WebSocket("wss://eu.rt.speechmatics.com/v2?jwt=" + encodeURIComponent(jwt));
+
+  ws.onopen = () => {
+    const cfg = {
+      message: "StartRecognition",
+      audio_format: { type: "raw", encoding: "pcm_s16le", sample_rate: 16000 },
+      transcription_config: {
+        language: "es",
+        operating_point: "enhanced",
+        diarization: "speaker",
+        speaker_diarization_config: { speaker_sensitivity: 0.6 },
+        max_delay: 1.2,
+        enable_partials: true
+      }
+    };
+    const vocab = smVocab();
+    if (vocab.length) cfg.transcription_config.additional_vocab = vocab;
+    ws.send(JSON.stringify(cfg));
+  };
+
+  ws.onmessage = ev => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch (_) { return; }
+    switch (msg.message) {
+      case "RecognitionStarted":
+        beginSession();
+        smStartAudio().catch(() => {
+          fatalError = true;
+          banner("No se pudo iniciar el audio en este navegador.", "err");
+          try { ws.close(); } catch (_) {}
+        });
+        break;
+      case "AddPartialTranscript":
+        showInterim(smText(msg.results));
+        break;
+      case "AddTranscript":
+        showInterim("");
+        appendFinalWords(smWords(msg.results));
+        break;
+      case "Error":
+        fatalError = true;
+        banner("Speechmatics: " + (msg.reason || msg.type || "error"), "err");
+        break;
+    }
+  };
+
+  ws.onclose = handleWsClose;
+  ws.onerror = () => { /* onclose se encarga */ };
+}
+
+/* ---------- Parar ---------- */
 function stopAudioOnly() {
   clearInterval(keepAliveTimer);
   clearInterval(clockTimer);
   keepAliveTimer = clockTimer = null;
   try { if (rec && rec.state !== "inactive") rec.stop(); } catch (_) {}
   rec = null;
+  if (smCtx) { try { smCtx.close(); } catch (_) {} smCtx = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
 }
 
@@ -590,7 +904,13 @@ function fullStop() {
   stopAudioOnly();
   if (ws) {
     try {
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "CloseStream" }));
+      if (ws.readyState === WebSocket.OPEN) {
+        if (currentEngine() === "deepgram") {
+          ws.send(JSON.stringify({ type: "CloseStream" }));
+        } else {
+          ws.send(JSON.stringify({ message: "EndOfStream", last_seq_no: smSeq }));
+        }
+      }
       ws.close();
     } catch (_) {}
     ws = null;
@@ -606,7 +926,7 @@ function fullStop() {
 
 $("btnMain").onclick = () => {
   if (demoRunning) { stopDemo(); return; }
-  if (state === "idle") startListening();
+  if (state === "idle") { archiveConversation(); startListening(); }
   else { fullStop(); banner(""); }
 };
 
@@ -614,17 +934,63 @@ window.addEventListener("beforeunload", () => { try { fullStop(); } catch (_) {}
 
 /* ---------- Ajustes ---------- */
 const dlg = $("dlg");
+
+function paintEngineSeg(engine) {
+  $("segDg").className = engine === "deepgram" ? "on" : "";
+  $("segSm").className = engine === "speechmatics" ? "on" : "";
+}
+let pendingEngine = currentEngine();
+$("segDg").onclick = () => { pendingEngine = "deepgram"; paintEngineSeg(pendingEngine); };
+$("segSm").onclick = () => { pendingEngine = "speechmatics"; paintEngineSeg(pendingEngine); };
+
+async function fillMicList() {
+  const sel = $("selMic");
+  const saved = localStorage.getItem(LS.mic) || "";
+  sel.innerHTML = '<option value="">Automático</option>';
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    let n = 0;
+    for (const d of devs) {
+      if (d.kind !== "audioinput" || !d.deviceId || d.deviceId === "default") continue;
+      n++;
+      const opt = document.createElement("option");
+      opt.value = d.deviceId;
+      opt.textContent = d.label || "Micrófono " + n;
+      sel.appendChild(opt);
+    }
+    sel.value = saved;
+    if (sel.value !== saved) sel.value = "";
+  } catch (_) {}
+}
+
 function openSettings() {
-  $("inpKey").value = localStorage.getItem(LS.key) || "";
+  $("inpKey").value = localStorage.getItem(LS.keyDg) || "";
+  $("inpKeySm").value = localStorage.getItem(LS.keySm) || "";
+  $("inpVocab").value = localStorage.getItem(LS.vocab) || "";
+  $("chkFilters").checked = localStorage.getItem(LS.filters) !== "0";
+  pendingEngine = currentEngine();
+  paintEngineSeg(pendingEngine);
+  fillMicList();
   dlg.showModal();
 }
 $("btnSettings").onclick = openSettings;
 $("btnCloseDlg").onclick = () => dlg.close();
+
 $("btnSave").onclick = () => {
-  const v = $("inpKey").value.trim();
-  if (v) { localStorage.setItem(LS.key, v); banner("Clave guardada. ¡Ya puedes pulsar Empezar!", "info"); }
-  else localStorage.removeItem(LS.key);
+  const kDg = $("inpKey").value.trim();
+  const kSm = $("inpKeySm").value.trim();
+  if (kDg) localStorage.setItem(LS.keyDg, kDg); else localStorage.removeItem(LS.keyDg);
+  if (kSm) localStorage.setItem(LS.keySm, kSm); else localStorage.removeItem(LS.keySm);
+  localStorage.setItem(LS.vocab, $("inpVocab").value.trim());
+  localStorage.setItem(LS.filters, $("chkFilters").checked ? "1" : "0");
+  localStorage.setItem(LS.mic, $("selMic").value);
+  localStorage.setItem(LS.engine, pendingEngine);
+  updateEngTag();
   dlg.close();
+  const key = localStorage.getItem(pendingEngine === "deepgram" ? LS.keyDg : LS.keySm);
+  banner(key
+    ? "Guardado. Motor: " + ENGINE_NAMES[pendingEngine] + ". ¡Ya puedes pulsar Empezar!"
+    : "Guardado, pero falta la clave de " + ENGINE_NAMES[pendingEngine] + ".", "info");
 };
 
 /* ---------- Modo demostración ---------- */
@@ -643,7 +1009,7 @@ function fakeWords(entry) {
 
 function startDemo() {
   dlg.close();
-  clearTranscript();
+  archiveConversation();
   demoRunning = true;
   sessionStart = Date.now();
   clockTimer = setInterval(tickClock, 1000);

@@ -1,5 +1,5 @@
 // Service worker mínimo: red primero, caché solo como respaldo si no hay conexión.
-const CACHE = "conversa-v2";
+const CACHE = "conversa-v3";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", e => {
