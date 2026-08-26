@@ -256,6 +256,7 @@
   </div>
   <div class="privacy">
     🔒 <b>Privacidad:</b> la conversación no se guarda en ningún sitio. Al cerrar la aplicación se borra todo. Solo la clave y tus preferencias de letra y tema quedan guardadas en esta tablet.
+    <br><span style="opacity:.6">Versión 1.1</span>
   </div>
   <div class="dlg-row">
     <button class="btn-pri" id="btnSave">Guardar</button>
@@ -365,13 +366,58 @@ function nearBottom() {
   return feed.scrollHeight - feed.scrollTop - feed.clientHeight < 140;
 }
 
+function smoothRuns(words) {
+  // Agrupa palabras consecutivas por hablante.
+  const runs = [];
+  for (const w of words) {
+    const spk = Number.isInteger(w.speaker)
+      ? w.speaker
+      : (runs.length ? runs[runs.length - 1].speaker : 0);
+    if (runs.length && runs[runs.length - 1].speaker === spk) {
+      runs[runs.length - 1].words.push(w);
+    } else {
+      runs.push({ speaker: spk, words: [w] });
+    }
+  }
+  // El etiquetador de streaming suelta a veces 1-2 palabras con el hablante
+  // equivocado a mitad de frase: se funden con el tramo vecino más largo.
+  let changed = true;
+  while (changed && runs.length > 1) {
+    changed = false;
+    for (let i = 0; i < runs.length; i++) {
+      if (runs[i].words.length > 2) continue;
+      const prev = runs[i - 1] || null, next = runs[i + 1] || null;
+      const target = prev && next
+        ? (prev.words.length >= next.words.length ? prev : next)
+        : (prev || next);
+      if (!target || target.words.length <= runs[i].words.length) continue;
+      if (target === prev) prev.words.push(...runs[i].words);
+      else next.words.unshift(...runs[i].words);
+      runs.splice(i, 1);
+      for (let j = 0; j < runs.length - 1; j++) {
+        if (runs[j].speaker === runs[j + 1].speaker) {
+          runs[j].words.push(...runs[j + 1].words);
+          runs.splice(j + 1, 1);
+          j--;
+        }
+      }
+      changed = true;
+      break;
+    }
+  }
+  return runs;
+}
+
 function appendFinalWords(words) {
   if (!words || !words.length) return;
   $("empty").style.display = "none";
   const stick = nearBottom();
-  for (const w of words) {
-    const spk = Number.isInteger(w.speaker) ? w.speaker : 0;
-    const text = (w.punctuated_word || w.word || "").trim();
+  for (const run of smoothRuns(words)) {
+    const spk = run.speaker;
+    const text = run.words
+      .map(w => (w.punctuated_word || w.word || "").trim())
+      .filter(Boolean)
+      .join(" ");
     if (!text) continue;
     if (!lastSegment || lastSegment.speaker !== spk) {
       const bubble = document.createElement("div");
@@ -468,7 +514,8 @@ async function startListening() {
     language: "es",
     diarize: "true",
     smart_format: "true",
-    interim_results: "true"
+    interim_results: "true",
+    endpointing: "300"
   });
   ws = new WebSocket("wss://api.deepgram.com/v1/listen?" + params, ["token", key]);
 
@@ -481,7 +528,7 @@ async function startListening() {
     tickClock();
     acquireWakeLock();
 
-    rec = new MediaRecorder(micStream, { mimeType: mime });
+    rec = new MediaRecorder(micStream, { mimeType: mime, audioBitsPerSecond: 128000 });
     rec.ondataavailable = e => {
       if (e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) ws.send(e.data);
     };
