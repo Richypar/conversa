@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1420">
+<title>Conversa — subtítulos en vivo</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --fs: 30px;
+    --bg: #ffffff;
+    --fg: #111318;
+    --muted: #5b6270;
+    --card: #f2f4f8;
+    --line: #d8dde6;
+    --ok: #188a42;
+    --danger: #d0342c;
+  }
+  html[data-theme="dark"] {
+    --bg: #0f1420;
+    --fg: #f3f5f9;
+    --muted: #9aa3b2;
+    --card: #1a2232;
+    --line: #2a3348;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  .brand { font-weight: 700; font-size: 20px; letter-spacing: .3px; }
+  .tools { display: flex; gap: 8px; }
+  .tools button {
+    min-width: 52px;
+    height: 48px;
+    padding: 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .tools button:active { transform: scale(.96); }
+
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px 8px;
+    scroll-behavior: smooth;
+  }
+  #empty {
+    color: var(--muted);
+    font-size: 24px;
+    text-align: center;
+    margin-top: 12vh;
+    line-height: 1.5;
+    padding: 0 24px;
+  }
+  .bubble {
+    border-radius: 14px;
+    border-left: 7px solid var(--acc, #888);
+    background: color-mix(in srgb, var(--acc, #888) 10%, var(--bg));
+    padding: 10px 14px 12px;
+    margin-bottom: 12px;
+    max-width: 100%;
+  }
+  .bubble .who {
+    display: inline-block;
+    font-size: calc(var(--fs) * .62);
+    font-weight: 800;
+    color: var(--acc);
+    margin-bottom: 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 6px;
+  }
+  .bubble .who:active { background: color-mix(in srgb, var(--acc) 22%, transparent); }
+  .bubble .txt {
+    font-size: var(--fs);
+    line-height: 1.42;
+    overflow-wrap: break-word;
+  }
+  .who-edit {
+    font-size: calc(var(--fs) * .62);
+    font-weight: 800;
+    color: var(--fg);
+    background: var(--bg);
+    border: 2px solid var(--acc);
+    border-radius: 6px;
+    padding: 2px 6px;
+    max-width: 60%;
+  }
+  #interim {
+    font-size: var(--fs);
+    line-height: 1.42;
+    color: var(--muted);
+    font-style: italic;
+    min-height: 1.4em;
+    padding: 2px 14px 10px;
+  }
+
+  #banner {
+    display: none;
+    flex: none;
+    padding: 10px 14px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+  }
+  #banner.err { display: block; background: #fde8e7; color: #8f1d16; }
+  #banner.info { display: block; background: #e8f1fd; color: #164e8f; }
+  html[data-theme="dark"] #banner.err { background: #4a1512; color: #ffb4ad; }
+  html[data-theme="dark"] #banner.info { background: #12293f; color: #a5c9f5; }
+
+  footer {
+    flex: none;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  #status {
+    flex: none;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--muted);
+    min-width: 110px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #dot { width: 14px; height: 14px; border-radius: 50%; background: var(--muted); flex: none; }
+  #dot.live { background: var(--danger); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  #btnMain {
+    flex: 1;
+    height: 78px;
+    font-size: 28px;
+    font-weight: 800;
+    border: none;
+    border-radius: 18px;
+    background: var(--ok);
+    color: #fff;
+    cursor: pointer;
+  }
+  #btnMain.stop { background: var(--danger); }
+  #btnMain:active { transform: scale(.98); }
+
+  dialog {
+    border: none;
+    border-radius: 18px;
+    background: var(--bg);
+    color: var(--fg);
+    width: min(560px, 92vw);
+    padding: 22px;
+    margin: auto;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  dialog h2 { font-size: 24px; margin-bottom: 14px; }
+  dialog label { display: block; font-size: 17px; font-weight: 600; margin: 14px 0 6px; }
+  dialog input[type="password"], dialog input[type="text"] {
+    width: 100%;
+    font-size: 18px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--fg);
+  }
+  .dlg-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .dlg-row button {
+    flex: 1;
+    min-width: 130px;
+    height: 54px;
+    font-size: 18px;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .btn-pri { background: var(--ok); color: #fff; }
+  .btn-sec { background: var(--card); color: var(--fg); border: 1px solid var(--line) !important; }
+  .help { font-size: 15px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
+  .help ol { margin: 6px 0 0 20px; }
+  .help a { color: #1d6fd8; }
+  .privacy {
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--card);
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">💬 Conversa</div>
+  <div class="tools">
+    <button id="btnFontMinus" title="Letra más pequeña">A−</button>
+    <button id="btnFontPlus" title="Letra más grande">A+</button>
+    <button id="btnTheme" title="Cambiar tema">🌙</button>
+    <button id="btnClear" title="Borrar la conversación">🗑️</button>
+    <button id="btnSettings" title="Ajustes">⚙️</button>
+  </div>
+</header>
+
+<main id="feed">
+  <div id="empty">Pulsa el botón verde de abajo para empezar a escuchar la conversación</div>
+  <div id="bubbles"></div>
+  <div id="interim"></div>
+</main>
+
+<div id="banner"></div>
+
+<footer>
+  <div id="status"><span id="dot"></span><span id="statusTxt">Parado</span></div>
+  <button id="btnMain">🎤 Empezar</button>
+</footer>
+
+<dialog id="dlg">
+  <h2>Ajustes</h2>
+  <label for="inpKey">Clave de API de Deepgram</label>
+  <input type="password" id="inpKey" autocomplete="off" placeholder="Pega aquí la clave">
+  <div class="help">
+    <b>¿Cómo consigo la clave?</b> (solo hay que hacerlo una vez)
+    <ol>
+      <li>Entra en <a href="https://console.deepgram.com" target="_blank" rel="noopener">console.deepgram.com</a> y crea una cuenta (regalan 200&nbsp;$ de saldo, más de un año de uso).</li>
+      <li>En el menú, abre <b>API Keys</b> y pulsa <b>Create a New API Key</b>.</li>
+      <li>Copia la clave y pégala arriba.</li>
+    </ol>
+  </div>
+  <div class="privacy">
+    🔒 <b>Privacidad:</b> la conversación no se guarda en ningún sitio. Al cerrar la aplicación se borra todo. Solo la clave y tus preferencias de letra y tema quedan guardadas en esta tablet.
+  </div>
+  <div class="dlg-row">
+    <button class="btn-pri" id="btnSave">Guardar</button>
+    <button class="btn-sec" id="btnDemo">Ver demostración</button>
+    <button class="btn-sec" id="btnCloseDlg">Cerrar</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+
+/* ---------- Estado ---------- */
+const LS = { key: "conversa_key", font: "conversa_font", theme: "conversa_theme" };
+const COLORS = ["#1d6fd8", "#188a42", "#d97706", "#9333ea", "#dc2626", "#0d9488", "#b45309", "#4f46e5"];
+
+let state = "idle";          // idle | connecting | listening | reconnecting
+let userStopped = false;
+let ws = null, rec = null, micStream = null, wakeLock = null;
+let keepAliveTimer = null, clockTimer = null, reconnectTries = 0, sessionStart = 0;
+let demoTimer = null, demoRunning = false;
+const speakerNames = {};     // índice -> nombre (solo en memoria, se borra al cerrar)
+let lastSegment = null;      // { speaker, txtEl }
+
+const $ = id => document.getElementById(id);
+const feed = $("feed"), bubbles = $("bubbles"), interimEl = $("interim");
+
+/* ---------- Preferencias ---------- */
+function applyFont(px) {
+  px = Math.min(60, Math.max(20, px));
+  document.documentElement.style.setProperty("--fs", px + "px");
+  localStorage.setItem(LS.font, px);
+  return px;
+}
+let fontSize = applyFont(parseInt(localStorage.getItem(LS.font) || "30", 10));
+
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("btnTheme").textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem(LS.theme, t);
+}
+applyTheme(localStorage.getItem(LS.theme) || "light");
+
+$("btnFontPlus").onclick = () => { fontSize = applyFont(fontSize + 4); };
+$("btnFontMinus").onclick = () => { fontSize = applyFont(fontSize - 4); };
+$("btnTheme").onclick = () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+/* ---------- UI: banner y estado ---------- */
+function banner(msg, kind) {
+  const b = $("banner");
+  if (!msg) { b.className = ""; b.textContent = ""; return; }
+  b.className = kind || "info";
+  b.textContent = msg;
+}
+function setStatus(txt, live) {
+  $("statusTxt").textContent = txt;
+  $("dot").className = live ? "live" : "";
+}
+function setMainButton(listening) {
+  const b = $("btnMain");
+  b.textContent = listening ? "⏹ Parar" : "🎤 Empezar";
+  b.className = listening ? "stop" : "";
+}
+function tickClock() {
+  const s = Math.floor((Date.now() - sessionStart) / 1000);
+  const mm = String(Math.floor(s / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  setStatus((demoRunning ? "Demo " : "") + mm + ":" + ss, true);
+}
+
+/* ---------- Transcripción en pantalla ---------- */
+function speakerLabel(i) { return speakerNames[i] || "Persona " + (i + 1); }
+
+function renameSpeaker(i, whoEl) {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "who-edit";
+  input.value = speakerNames[i] || "";
+  input.placeholder = "Persona " + (i + 1);
+  input.maxLength = 20;
+  whoEl.replaceWith(input);
+  input.focus();
+  const done = () => {
+    const v = input.value.trim();
+    if (v) speakerNames[i] = v; else delete speakerNames[i];
+    document.querySelectorAll('.who[data-spk="' + i + '"]').forEach(el => {
+      el.textContent = speakerLabel(i);
+    });
+    const who = makeWho(i);
+    input.replaceWith(who);
+  };
+  input.addEventListener("blur", done);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") input.blur(); });
+}
+
+function makeWho(i) {
+  const who = document.createElement("button");
+  who.className = "who";
+  who.dataset.spk = i;
+  who.textContent = speakerLabel(i);
+  who.title = "Toca para poner nombre";
+  who.onclick = () => renameSpeaker(i, who);
+  return who;
+}
+
+function nearBottom() {
+  return feed.scrollHeight - feed.scrollTop - feed.clientHeight < 140;
+}
+
+function appendFinalWords(words) {
+  if (!words || !words.length) return;
+  $("empty").style.display = "none";
+  const stick = nearBottom();
+  for (const w of words) {
+    const spk = Number.isInteger(w.speaker) ? w.speaker : 0;
+    const text = (w.punctuated_word || w.word || "").trim();
+    if (!text) continue;
+    if (!lastSegment || lastSegment.speaker !== spk) {
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.style.setProperty("--acc", COLORS[spk % COLORS.length]);
+      bubble.appendChild(makeWho(spk));
+      const txt = document.createElement("div");
+      txt.className = "txt";
+      bubble.appendChild(txt);
+      bubbles.appendChild(bubble);
+      lastSegment = { speaker: spk, txtEl: txt };
+    }
+    lastSegment.txtEl.textContent +=
+      (lastSegment.txtEl.textContent ? " " : "") + text;
+  }
+  if (stick) feed.scrollTop = feed.scrollHeight;
+}
+
+function showInterim(text) {
+  const stick = nearBottom();
+  interimEl.textContent = text || "";
+  if (stick) feed.scrollTop = feed.scrollHeight;
+}
+
+function clearTranscript() {
+  bubbles.innerHTML = "";
+  interimEl.textContent = "";
+  lastSegment = null;
+  $("empty").style.display = state === "idle" ? "" : "none";
+}
+
+let clearArmed = false;
+$("btnClear").onclick = () => {
+  if (!clearArmed) {
+    clearArmed = true;
+    $("btnClear").textContent = "¿Sí?";
+    setTimeout(() => { clearArmed = false; $("btnClear").textContent = "🗑️"; }, 2500);
+    return;
+  }
+  clearArmed = false;
+  $("btnClear").textContent = "🗑️";
+  clearTranscript();
+};
+
+/* ---------- Pantalla encendida ---------- */
+async function acquireWakeLock() {
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (_) {}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state === "listening") acquireWakeLock();
+});
+
+/* ---------- Micrófono + Deepgram ---------- */
+function pickMime() {
+  const options = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  for (const m of options) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return null;
+}
+
+async function startListening() {
+  const key = localStorage.getItem(LS.key);
+  if (!key) {
+    banner("Primero hay que configurar la clave de Deepgram (botón ⚙️).", "info");
+    openSettings();
+    return;
+  }
+  const mime = pickMime();
+  if (!mime) {
+    banner("Este navegador no puede grabar audio. Usa Chrome en la tablet.", "err");
+    return;
+  }
+  userStopped = false;
+  banner("");
+  state = "connecting";
+  setStatus("Conectando…", false);
+  setMainButton(true);
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+  } catch (e) {
+    state = "idle";
+    setMainButton(false);
+    setStatus("Parado", false);
+    banner("No hay permiso para usar el micrófono. Actívalo en los ajustes de Chrome.", "err");
+    return;
+  }
+
+  const params = new URLSearchParams({
+    model: "nova-3",
+    language: "es",
+    diarize: "true",
+    smart_format: "true",
+    interim_results: "true"
+  });
+  ws = new WebSocket("wss://api.deepgram.com/v1/listen?" + params, ["token", key]);
+
+  ws.onopen = () => {
+    state = "listening";
+    reconnectTries = 0;
+    banner("");
+    if (!sessionStart) sessionStart = Date.now();
+    clockTimer = setInterval(tickClock, 1000);
+    tickClock();
+    acquireWakeLock();
+
+    rec = new MediaRecorder(micStream, { mimeType: mime });
+    rec.ondataavailable = e => {
+      if (e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) ws.send(e.data);
+    };
+    rec.start(250);
+
+    keepAliveTimer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "KeepAlive" }));
+    }, 5000);
+  };
+
+  ws.onmessage = ev => {
+    let data;
+    try { data = JSON.parse(ev.data); } catch (_) { return; }
+    if (data.type !== "Results") return;
+    const alt = data.channel && data.channel.alternatives && data.channel.alternatives[0];
+    if (!alt) return;
+    if (data.is_final) {
+      showInterim("");
+      appendFinalWords(alt.words);
+    } else if (alt.transcript) {
+      showInterim(alt.transcript);
+    }
+  };
+
+  ws.onclose = ev => {
+    if (userStopped || state === "idle") return;
+    stopAudioOnly();
+    if (ev.code === 1008 || ev.code === 4001 || ev.code === 4003) {
+      fullStop();
+      banner("La clave de Deepgram no es válida o no tiene saldo. Revísala en ⚙️ Ajustes.", "err");
+      return;
+    }
+    if (reconnectTries >= 6) {
+      fullStop();
+      banner("No se pudo recuperar la conexión. Comprueba el wifi y vuelve a pulsar Empezar.", "err");
+      return;
+    }
+    reconnectTries++;
+    state = "reconnecting";
+    setStatus("Reconectando…", false);
+    banner("Se cortó la conexión. Reconectando…", "info");
+    setTimeout(() => { if (!userStopped) startListening(); }, 1200 * reconnectTries);
+  };
+
+  ws.onerror = () => { /* onclose se encarga */ };
+}
+
+function stopAudioOnly() {
+  clearInterval(keepAliveTimer);
+  clearInterval(clockTimer);
+  keepAliveTimer = clockTimer = null;
+  try { if (rec && rec.state !== "inactive") rec.stop(); } catch (_) {}
+  rec = null;
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+function fullStop() {
+  userStopped = true;
+  stopAudioOnly();
+  if (ws) {
+    try {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "CloseStream" }));
+      ws.close();
+    } catch (_) {}
+    ws = null;
+  }
+  try { wakeLock?.release(); } catch (_) {}
+  wakeLock = null;
+  state = "idle";
+  sessionStart = 0;
+  setMainButton(false);
+  setStatus("Parado", false);
+  showInterim("");
+}
+
+$("btnMain").onclick = () => {
+  if (demoRunning) { stopDemo(); return; }
+  if (state === "idle") startListening();
+  else { fullStop(); banner(""); }
+};
+
+window.addEventListener("beforeunload", () => { try { fullStop(); } catch (_) {} });
+
+/* ---------- Ajustes ---------- */
+const dlg = $("dlg");
+function openSettings() {
+  $("inpKey").value = localStorage.getItem(LS.key) || "";
+  dlg.showModal();
+}
+$("btnSettings").onclick = openSettings;
+$("btnCloseDlg").onclick = () => dlg.close();
+$("btnSave").onclick = () => {
+  const v = $("inpKey").value.trim();
+  if (v) { localStorage.setItem(LS.key, v); banner("Clave guardada. ¡Ya puedes pulsar Empezar!", "info"); }
+  else localStorage.removeItem(LS.key);
+  dlg.close();
+};
+
+/* ---------- Modo demostración ---------- */
+const DEMO_SCRIPT = [
+  { speaker: 0, text: "Hola abuela, ¿qué tal has dormido esta noche?" },
+  { speaker: 1, text: "Muy bien, hija. Me he levantado a las ocho y ya he desayunado." },
+  { speaker: 0, text: "Qué bien. Esta tarde vienen los primos a merendar." },
+  { speaker: 2, text: "¡Sí! Y traemos bizcocho de chocolate, el que te gusta." },
+  { speaker: 1, text: "Estupendo, entonces preparo café para todos." },
+  { speaker: 0, text: "Perfecto. Ah, y el domingo vamos todos a comer a la playa." }
+];
+
+function fakeWords(entry) {
+  return entry.text.split(" ").map(w => ({ punctuated_word: w, speaker: entry.speaker }));
+}
+
+function startDemo() {
+  dlg.close();
+  clearTranscript();
+  demoRunning = true;
+  sessionStart = Date.now();
+  clockTimer = setInterval(tickClock, 1000);
+  tickClock();
+  setMainButton(true);
+  banner("Esto es una demostración con una conversación inventada.", "info");
+  $("empty").style.display = "none";
+
+  let i = 0;
+  function playEntry() {
+    if (!demoRunning) return;
+    if (i >= DEMO_SCRIPT.length) { stopDemo(); return; }
+    const entry = DEMO_SCRIPT[i++];
+    const words = entry.text.split(" ");
+    let j = 0;
+    demoTimer = setInterval(() => {
+      if (!demoRunning) return;
+      j++;
+      if (j <= words.length) {
+        showInterim(words.slice(0, j).join(" "));
+      } else {
+        clearInterval(demoTimer);
+        showInterim("");
+        appendFinalWords(fakeWords(entry));
+        demoTimer = setTimeout(playEntry, 900);
+      }
+    }, 170);
+  }
+  playEntry();
+}
+
+function stopDemo() {
+  demoRunning = false;
+  clearInterval(demoTimer);
+  clearTimeout(demoTimer);
+  clearInterval(clockTimer);
+  clockTimer = null;
+  sessionStart = 0;
+  setMainButton(false);
+  setStatus("Parado", false);
+  showInterim("");
+  banner("");
+}
+
+$("btnDemo").onclick = startDemo;
+if (new URLSearchParams(location.search).get("demo") === "1") {
+  window.addEventListener("load", () => setTimeout(startDemo, 400));
+}
+
+/* ---------- Service worker ---------- */
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
